@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画像リサイズツール</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <h1>画像リサイズツール</h1>
+
+        <div id="privacy-message">
+            画像はアップロードされません。全ての処理はお使いのブラウザ内で完結します。ファイルはページを閉じると自動的に削除されます。
+        </div>
+
+        <div class="main-content">
+            <section class="controls-section">
+                <div>
+                    <label for="imageFile">画像ファイルを選択</label>
+                    <input type="file" id="imageFile" accept=".jpg,.jpeg,.png,.webp,.bmp">
+                </div>
+
+                <div>
+                    <p>元の画像のサイズ <span id="originalDimensions">--- x ---</span></p>
+                </div>
+
+                <div>
+                    <p>希望のサムネイルサイズを指定してください（例：幅300px、高さ400px）。</p>
+                    <label for="outputWidth">出力幅 (px)</label>
+                    <input type="number" id="outputWidth" placeholder="例: 300">
+                    <label for="outputHeight">出力高さ (px)</label>
+                    <input type="number" id="outputHeight" placeholder="例: 400">
+                    {/* Error message for dimensions will be inserted here by script.js */}
+                </div>
+
+                <div>
+                    <p>リサイズオプション</p>
+                    <input type="radio" id="resizeFit" name="resizeOption" value="fit" checked>
+                    <label for="resizeFit">指定サイズ内に収める（縦横比を維持、背景追加）</label>
+                    <div class="sub-options">
+                        <input type="radio" id="bgWhite" name="backgroundOption" value="white" checked>
+                        <label for="bgWhite">背景色：白</label>
+                        <input type="radio" id="bgTransparent" name="backgroundOption" value="transparent">
+                        <label for="bgTransparent">背景色：透明</label>
+                    </div>
+                    <br>
+                    <input type="radio" id="resizeCrop" name="resizeOption" value="crop">
+                    <label for="resizeCrop">指定サイズで中央クロップ（縦横比を維持）</label>
+                </div>
+
+                <div>
+                    <label for="outputFormat">出力形式</label>
+                    <select id="outputFormat">
+                        <option value="jpeg">JPG</option>
+                        <option value="png">PNG</option>
+                        <option value="webp">WebP</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="outputFilename">出力ファイル名</label>
+                    <input type="text" id="outputFilename" placeholder="例: resized_image">
+                </div>
+
+                 <div>
+                    <button id="downloadButton">ダウンロード</button>
+                </div>
+            </section>
+
+            <section class="preview-section">
+                <div>
+                    <p>プレビュー</p>
+                    <canvas id="previewCanvas"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <section class="presets-section">
+            <p>定型サイズ</p>
+            <div id="presetTemplates">
+                <button id="presetDriverLicense">運転免許証 (613x413px)</button>
+                <button id="presetPassport">パスポート (413x531px)</button>
+                <button id="presetMyNumber">マイナンバーカード用写真 (348x431px)</button>
+                <button id="presetRirekisho">履歴書用写真 (354x472px)</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

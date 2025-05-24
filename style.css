@@ -1,0 +1,258 @@
+/* Global Styles */
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f8f9fa; /* Light gray background */
+    color: #343a40; /* Darker text for better readability */
+    line-height: 1.6;
+}
+
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #ffffff; /* White background for the app itself */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #007bff; /* Primary color for the heading */
+    margin-bottom: 25px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #495057; /* Slightly lighter than body text */
+}
+
+/* Layout Structure */
+.main-content {
+    display: flex;
+    flex-direction: row;
+    gap: 30px; /* Space between controls and preview */
+    margin-bottom: 20px;
+}
+
+.controls-section {
+    flex: 2; /* Takes up 2/3 of the space */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.preview-section {
+    flex: 1; /* Takes up 1/3 of the space */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center canvas */
+}
+
+.controls-section div,
+.preview-section div,
+.presets-section div {
+    padding: 15px;
+    background-color: #fdfdfd; /* Slightly off-white for sections */
+    border: 1px solid #e9ecef; /* Light border for sections */
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.presets-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #fdfdfd;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Element Styling */
+input[type="file"],
+input[type="number"],
+input[type="text"],
+select {
+    width: 100%; /* Full width within their container */
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #ced4da; /* Standard input border */
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+input[type="file"] {
+    padding: 5px; /* Specific padding for file input */
+}
+
+input[type="number"],
+input[type="text"] {
+    /* Ensure consistent height with select */
+}
+
+button,
+#presetTemplates button {
+    background-color: #007bff; /* Primary button color */
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease-in-out;
+    display: inline-block; /* Allows margin and padding */
+    text-align: center;
+}
+
+button:hover,
+#presetTemplates button:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+}
+
+#downloadButton {
+    background-color: #28a745; /* Green for download */
+    width: 100%; /* Make download button full width in its container */
+}
+
+#downloadButton:hover {
+    background-color: #1e7e34; /* Darker green */
+}
+
+#previewCanvas {
+    border: 2px dashed #007bff; /* Dashed border with primary color */
+    background-color: #e9ecef; /* Light gray background for canvas */
+    max-width: 100%;
+    min-height: 200px; /* Minimum height */
+    display: block; /* Remove extra space below canvas */
+    margin-top: 5px;
+    border-radius: 4px;
+}
+
+/* Error message styling (assuming ID from script.js) */
+#outputSizeError {
+    color: #dc3545; /* Red for errors */
+    font-size: 0.9rem;
+    display: block;
+    margin-top: 5px;
+}
+
+/* Specific Sections Styling */
+#privacy-message {
+    color: #856404; /* Dark yellow/brown for warning */
+    background-color: #fff3cd; /* Light yellow background */
+    border: 1px solid #ffeeba; /* Yellow border */
+    padding: 15px;
+    margin-bottom: 25px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+#originalDimensions {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.sub-options {
+    padding: 10px !important; /* Override parent div padding */
+    margin-left: 20px;
+    margin-top: 5px;
+    border: none !important; /* Remove border for sub-options container */
+    box-shadow: none !important; /* Remove shadow for sub-options container */
+    background-color: transparent !important; /* No background for sub-options container */
+}
+
+.sub-options input[type="radio"] {
+    margin-right: 5px;
+}
+.sub-options label {
+    font-weight: normal; /* Normal weight for radio labels */
+    margin-right: 15px;
+    display: inline-block; /* Keep them inline */
+}
+
+
+#presetTemplates {
+    display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    gap: 10px; /* Space between preset buttons */
+    background-color: transparent !important; /* Transparent background for the div holding buttons */
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+#presetTemplates button {
+    background-color: #6c757d; /* Secondary/gray color for presets */
+    flex-grow: 1; /* Allow buttons to grow and fill space */
+}
+
+#presetTemplates button:hover {
+    background-color: #545b62; /* Darker gray */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .app-container {
+        padding: 15px;
+    }
+    
+    .main-content {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .controls-section,
+    .preview-section {
+        flex: 1; /* Reset flex basis, allow to take full width */
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select,
+    button {
+        width: 100%; /* Ensure form elements take full width */
+        margin-bottom: 15px; /* More space on mobile */
+    }
+    
+    input#outputWidth,
+    input#outputHeight {
+        width: calc(50% - 10px); /* Adjust width for side-by-side, with less gap */
+        display: inline-block;
+    }
+    input#outputWidth {
+        margin-right: 10px;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    #presetTemplates {
+        flex-direction: column; /* Stack preset buttons vertically */
+    }
+    #presetTemplates button {
+        width: 100%; /* Make preset buttons full width on mobile */
+    }
+}
+
+@media (max-width: 480px) {
+    input#outputWidth,
+    input#outputHeight {
+        width: 100%; /* Stack width/height inputs on very small screens */
+        display: block;
+        margin-right: 0;
+    }
+     label[for="outputWidth"],
+     label[for="outputHeight"] {
+        margin-bottom: 5px;
+    }
+}
