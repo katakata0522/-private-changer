@@ -1,92 +1,257 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画像リサイズツール</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="画像を外部へ送信せず、ブラウザ内だけでリサイズ・切り抜き・形式変換できる無料ツールです。">
+  <meta name="theme-color" content="#16324f">
+  <title>画像リサイズツール</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
+  <a class="skip-link" href="#main-content">設定へ移動</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div>
+        <p class="eyebrow">LOCAL IMAGE TOOL</p>
         <h1>画像リサイズツール</h1>
-
-        <div id="privacy-message">
-            画像はアップロードされません。全ての処理はお使いのブラウザ内で完結します。ファイルはページを閉じると自動的に削除されます。
-        </div>
-
-        <div class="main-content">
-            <section class="controls-section">
-                <div>
-                    <label for="imageFile">画像ファイルを選択</label>
-                    <input type="file" id="imageFile" accept=".jpg,.jpeg,.png,.webp,.bmp">
-                </div>
-
-                <div>
-                    <p>元の画像のサイズ <span id="originalDimensions">--- x ---</span></p>
-                </div>
-
-                <div>
-                    <p>希望のサムネイルサイズを指定してください（例：幅300px、高さ400px）。</p>
-                    <label for="outputWidth">出力幅 (px)</label>
-                    <input type="number" id="outputWidth" placeholder="例: 300">
-                    <label for="outputHeight">出力高さ (px)</label>
-                    <input type="number" id="outputHeight" placeholder="例: 400">
-                    {/* Error message for dimensions will be inserted here by script.js */}
-                </div>
-
-                <div>
-                    <p>リサイズオプション</p>
-                    <input type="radio" id="resizeFit" name="resizeOption" value="fit" checked>
-                    <label for="resizeFit">指定サイズ内に収める（縦横比を維持、背景追加）</label>
-                    <div class="sub-options">
-                        <input type="radio" id="bgWhite" name="backgroundOption" value="white" checked>
-                        <label for="bgWhite">背景色：白</label>
-                        <input type="radio" id="bgTransparent" name="backgroundOption" value="transparent">
-                        <label for="bgTransparent">背景色：透明</label>
-                    </div>
-                    <br>
-                    <input type="radio" id="resizeCrop" name="resizeOption" value="crop">
-                    <label for="resizeCrop">指定サイズで中央クロップ（縦横比を維持）</label>
-                </div>
-
-                <div>
-                    <label for="outputFormat">出力形式</label>
-                    <select id="outputFormat">
-                        <option value="jpeg">JPG</option>
-                        <option value="png">PNG</option>
-                        <option value="webp">WebP</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label for="outputFilename">出力ファイル名</label>
-                    <input type="text" id="outputFilename" placeholder="例: resized_image">
-                </div>
-
-                 <div>
-                    <button id="downloadButton">ダウンロード</button>
-                </div>
-            </section>
-
-            <section class="preview-section">
-                <div>
-                    <p>プレビュー</p>
-                    <canvas id="previewCanvas"></canvas>
-                </div>
-            </section>
-        </div>
-
-        <section class="presets-section">
-            <p>定型サイズ</p>
-            <div id="presetTemplates">
-                <button id="presetDriverLicense">運転免許証 (613x413px)</button>
-                <button id="presetPassport">パスポート (413x531px)</button>
-                <button id="presetMyNumber">マイナンバーカード用写真 (348x431px)</button>
-                <button id="presetRirekisho">履歴書用写真 (354x472px)</button>
-            </div>
-        </section>
+      </div>
+      <p class="privacy-badge">
+        <span aria-hidden="true">●</span>
+        画像は外部へ送信されません
+      </p>
     </div>
+  </header>
 
-    <script src="script.js"></script>
+  <main id="main-content" class="app-shell">
+    <section class="intro" aria-labelledby="intro-title">
+      <div>
+        <p class="step-label">STEP 1</p>
+        <h2 id="intro-title">まず、画像を選ぶ</h2>
+        <p>リサイズ、中央切り抜き、JPG・PNG・WebPへの変換を、この端末のブラウザ内だけで行います。</p>
+      </div>
+      <ul class="privacy-facts" aria-label="プライバシー情報">
+        <li>アップロードなし</li>
+        <li>ログイン不要</li>
+        <li>ページを閉じると破棄</li>
+      </ul>
+    </section>
+
+    <section class="upload-panel" aria-labelledby="upload-title">
+      <h2 id="upload-title" class="visually-hidden">画像ファイルを選択</h2>
+      <label id="drop-zone" class="drop-zone">
+        <input
+          id="image-file"
+          class="file-input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/bmp,.jpg,.jpeg,.png,.webp,.bmp"
+        >
+        <span class="upload-mark" aria-hidden="true">＋</span>
+        <strong>画像をここにドロップ</strong>
+        <span>または</span>
+        <span class="button button-primary">ファイルを選択</span>
+        <small id="upload-help">JPG・PNG・WebP・BMP／40MBまで</small>
+      </label>
+      <p id="upload-error" class="message message-error" role="alert" hidden></p>
+    </section>
+
+    <section id="workspace" class="workspace" aria-labelledby="settings-title" hidden>
+      <form id="resize-form" class="settings-panel" novalidate>
+        <button class="visually-hidden" type="submit">現在の設定を反映</button>
+        <div class="section-heading">
+          <div>
+            <p class="step-label">STEP 2</p>
+            <h2 id="settings-title">仕上がりを決める</h2>
+          </div>
+          <button id="reset-button" class="text-button" type="button">別の画像に変更</button>
+        </div>
+
+        <section class="source-summary" aria-labelledby="source-title">
+          <div class="source-thumb-wrap">
+            <img
+              id="source-thumbnail"
+              class="source-thumbnail"
+              src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+              alt=""
+            >
+          </div>
+          <div>
+            <h3 id="source-title">元の画像</h3>
+            <p id="source-name" class="source-name"></p>
+            <dl class="meta-list">
+              <div>
+                <dt>サイズ</dt>
+                <dd id="source-dimensions">—</dd>
+              </div>
+              <div>
+                <dt>容量</dt>
+                <dd id="source-size">—</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <fieldset>
+          <legend>出力サイズ</legend>
+          <div class="dimension-grid">
+            <label>
+              <span>幅 <small>px</small></span>
+              <input id="output-width" name="outputWidth" type="number" inputmode="numeric" min="1" max="8192" required>
+            </label>
+            <span class="dimension-separator" aria-hidden="true">×</span>
+            <label>
+              <span>高さ <small>px</small></span>
+              <input id="output-height" name="outputHeight" type="number" inputmode="numeric" min="1" max="8192" required>
+            </label>
+          </div>
+          <label class="check-row">
+            <input id="aspect-lock" type="checkbox" checked>
+            <span>元画像の縦横比を保つ</span>
+          </label>
+          <p id="dimension-error" class="field-error" role="alert" hidden></p>
+        </fieldset>
+
+        <div class="preset-block">
+          <div class="field-title-row">
+            <h3>よく使うサイズ</h3>
+            <span>選ぶと幅・高さへ反映</span>
+          </div>
+          <div class="preset-grid" role="group" aria-label="サイズのプリセット">
+            <button type="button" class="preset-button" data-width="1200" data-height="630">
+              <strong>OGP・リンク画像</strong><span>1200 × 630</span>
+            </button>
+            <button type="button" class="preset-button" data-width="1080" data-height="1080">
+              <strong>正方形</strong><span>1080 × 1080</span>
+            </button>
+            <button type="button" class="preset-button" data-width="600" data-height="800">
+              <strong>履歴書向け比率</strong><span>600 × 800（3:4）</span>
+            </button>
+            <button type="button" class="preset-button" data-width="700" data-height="900">
+              <strong>パスポート・マイナンバー比率</strong><span>700 × 900（7:9）</span>
+            </button>
+            <button type="button" class="preset-button" data-width="800" data-height="1000">
+              <strong>運転免許証向け比率</strong><span>800 × 1000（4:5）</span>
+            </button>
+          </div>
+          <p class="preset-note">証明写真は比率調整用です。顔の位置、余白、解像度など提出先の最新条件も確認してください。</p>
+        </div>
+
+        <fieldset>
+          <legend>画像の収め方</legend>
+          <div class="choice-grid">
+            <label class="choice-card">
+              <input type="radio" name="resize-mode" value="fit" checked>
+              <span>
+                <strong>全体を入れる</strong>
+                <small>縦横比を保ち、余白を追加</small>
+              </span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="resize-mode" value="crop">
+              <span>
+                <strong>中央で切り抜く</strong>
+                <small>余白なしで指定サイズいっぱいに表示</small>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset id="background-fieldset">
+          <legend>余白の背景</legend>
+          <div class="choice-grid choice-grid-compact">
+            <label class="choice-card">
+              <input type="radio" name="background" value="white" checked>
+              <span><strong>白</strong></span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="background" value="transparent">
+              <span><strong>透明</strong></span>
+            </label>
+          </div>
+          <p id="background-note" class="field-note" hidden>JPGは透明にできないため、白い背景で保存します。</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>保存形式</legend>
+          <div class="format-row">
+            <label>
+              <span>形式</span>
+              <select id="output-format">
+                <option value="jpeg">JPG</option>
+                <option value="png">PNG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </label>
+            <div id="quality-field" class="quality-field">
+              <span><label for="quality">画質</label> <output id="quality-value">90</output></span>
+              <input id="quality" type="range" min="50" max="100" step="1" value="90">
+            </div>
+          </div>
+          <p class="field-note">JPG・WebPは画質を下げると容量を小さくできます。PNGでは画質設定を使用しません。</p>
+        </fieldset>
+
+        <div class="filename-field">
+          <label for="output-filename">ファイル名</label>
+          <div class="filename-control">
+            <input id="output-filename" type="text" maxlength="100" autocomplete="off">
+            <span id="output-extension">.jpg</span>
+          </div>
+        </div>
+      </form>
+
+      <section class="preview-panel" aria-labelledby="preview-title">
+        <div class="preview-heading">
+          <div>
+            <p class="step-label">STEP 3</p>
+            <h2 id="preview-title">確認して保存</h2>
+          </div>
+          <span id="render-status" class="render-status" role="status" aria-live="polite">準備中</span>
+        </div>
+
+        <div id="canvas-stage" class="canvas-stage">
+          <canvas id="preview-canvas">リサイズ後の画像プレビュー</canvas>
+        </div>
+
+        <dl class="output-summary">
+          <div>
+            <dt>出力サイズ</dt>
+            <dd id="output-dimensions">—</dd>
+          </div>
+          <div>
+            <dt>予想容量</dt>
+            <dd id="output-size">計算中</dd>
+          </div>
+        </dl>
+
+        <p id="render-error" class="message message-error" role="alert" hidden></p>
+        <button id="download-button" class="button button-download" type="button" disabled>
+          画像をダウンロード
+        </button>
+        <p class="download-note">ダウンロード後も、元画像は変更されません。</p>
+      </section>
+    </section>
+
+    <section class="help-panel" aria-labelledby="help-title">
+      <h2 id="help-title">このツールの扱いについて</h2>
+      <div class="help-grid">
+        <div>
+          <h3>画像はどこへ保存されますか？</h3>
+          <p>サーバーへ送信しません。選択した画像と変換結果は、このページを開いている間だけブラウザ内で扱います。</p>
+        </div>
+        <div>
+          <h3>証明写真をそのまま提出できますか？</h3>
+          <p>プリセットは縦横比の調整用です。申請ごとに必要な余白、顔の大きさ、背景、ファイル容量を確認してください。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>画像リサイズツール — ブラウザ内で完結する画像加工</p>
+  </footer>
+
+  <script src="image-utils.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
