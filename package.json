@@ -1,0 +1,16 @@
+{
+  "name": "private-image-resizer",
+  "version": "2.0.0",
+  "private": true,
+  "description": "ブラウザ内だけで画像をリサイズ・切り抜き・形式変換する静的Webツール",
+  "scripts": {
+    "test": "node --test tests/image-utils.test.cjs && node tests/static-check.cjs",
+    "test:e2e": "playwright test",
+    "validate:html": "html-validate index.html",
+    "check": "npm test && npm run validate:html && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.0",
+    "html-validate": "11.6.0"
+  }
+}

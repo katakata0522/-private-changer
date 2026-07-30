@@ -1,299 +1,413 @@
-// script.js
-// This file will contain the JavaScript logic for the image resizing tool.
+(function initializeImageResizer() {
+  "use strict";
 
-let currentImage = null; // Global variable to store the loaded Image object
+  const {
+    validateSource,
+    validateOutputDimensions,
+    fitWithinOutputLimits,
+    isAcceptedInputFile,
+    calculateFit,
+    calculateCrop,
+    sanitizeFilename,
+    getMimeType,
+    getExtension,
+    normalizeQuality,
+    formatBytes
+  } = window.ImageUtils;
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded and parsed');
+  const elements = {
+    fileInput: document.getElementById("image-file"),
+    dropZone: document.getElementById("drop-zone"),
+    uploadError: document.getElementById("upload-error"),
+    workspace: document.getElementById("workspace"),
+    form: document.getElementById("resize-form"),
+    resetButton: document.getElementById("reset-button"),
+    sourceThumbnail: document.getElementById("source-thumbnail"),
+    sourceName: document.getElementById("source-name"),
+    sourceDimensions: document.getElementById("source-dimensions"),
+    sourceSize: document.getElementById("source-size"),
+    width: document.getElementById("output-width"),
+    height: document.getElementById("output-height"),
+    aspectLock: document.getElementById("aspect-lock"),
+    dimensionError: document.getElementById("dimension-error"),
+    backgroundFieldset: document.getElementById("background-fieldset"),
+    backgroundNote: document.getElementById("background-note"),
+    format: document.getElementById("output-format"),
+    qualityField: document.getElementById("quality-field"),
+    quality: document.getElementById("quality"),
+    qualityValue: document.getElementById("quality-value"),
+    filename: document.getElementById("output-filename"),
+    extension: document.getElementById("output-extension"),
+    canvas: document.getElementById("preview-canvas"),
+    canvasStage: document.getElementById("canvas-stage"),
+    renderStatus: document.getElementById("render-status"),
+    outputDimensions: document.getElementById("output-dimensions"),
+    outputSize: document.getElementById("output-size"),
+    renderError: document.getElementById("render-error"),
+    downloadButton: document.getElementById("download-button")
+  };
 
-    // Get references to DOM elements
-    const imageFileInput = document.getElementById('imageFile'); // Corrected ID
-    const originalDimensionsDisplay = document.getElementById('originalDimensions');
-    const outputWidthInput = document.getElementById('outputWidth');
-    const outputHeightInput = document.getElementById('outputHeight');
-    const resizeFitRadio = document.getElementById('resizeFit');
-    const resizeCropRadio = document.getElementById('resizeCrop');
-    const bgWhiteRadio = document.getElementById('bgWhite');
-    const bgTransparentRadio = document.getElementById('bgTransparent');
-    const outputFormatSelect = document.getElementById('outputFormat');
-    const outputFilenameInput = document.getElementById('outputFilename');
-    const previewCanvas = document.getElementById('previewCanvas'); // Keep for future use
-    // const downloadButton = document.getElementById('downloadButton'); // Already defined below
-    const presetTemplatesDiv = document.getElementById('presetTemplates');
+  const state = {
+    file: null,
+    image: null,
+    sourceUrl: "",
+    previewUrl: "",
+    outputBlob: null,
+    sourceWidth: 0,
+    sourceHeight: 0,
+    renderToken: 0,
+    renderTimer: null,
+    changingDimensions: false
+  };
 
-    // Placeholder function for updating the preview
-    function updatePreview() {
-        console.log("updatePreview called");
-        const previewCanvas = document.getElementById('previewCanvas');
-        const ctx = previewCanvas.getContext('2d');
-        const originalDimensionsDisplay = document.getElementById('originalDimensions'); // To display error messages
+  function showMessage(element, message) {
+    element.textContent = message;
+    element.hidden = !message;
+  }
 
-        if (!currentImage) {
-            console.log("No image loaded, clearing preview and returning.");
-            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-            // Optionally, display a message on canvas if needed, but clearing is usually enough
-            return;
+  function setRenderState(label, tone = "idle") {
+    elements.renderStatus.textContent = label;
+    elements.renderStatus.dataset.tone = tone;
+  }
+
+  function revokeUrl(key) {
+    if (state[key]) {
+      URL.revokeObjectURL(state[key]);
+      state[key] = "";
+    }
+  }
+
+  function clearOutput() {
+    revokeUrl("previewUrl");
+    state.outputBlob = null;
+    elements.downloadButton.disabled = true;
+    elements.outputSize.textContent = "—";
+  }
+
+  async function decodeImage(file) {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      if ("createImageBitmap" in window) {
+        try {
+          const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+          return { image: bitmap, objectUrl };
+        } catch {
+          // Safariなど、オプション付きcreateImageBitmapに未対応の環境ではImageへフォールバックする。
         }
+      }
 
-        let outputWidth = parseInt(document.getElementById('outputWidth').value);
-        let outputHeight = parseInt(document.getElementById('outputHeight').value);
+      const image = new Image();
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error("画像を読み込めませんでした。"));
+        image.src = objectUrl;
+      });
+      return { image, objectUrl };
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      throw error;
+    }
+  }
 
-        if (isNaN(outputWidth) || outputWidth <= 0 || isNaN(outputHeight) || outputHeight <= 0) {
-            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-            // Display error message - using originalDimensionsDisplay for simplicity or create a dedicated error span
-            const errorSpan = document.getElementById('outputSizeError') || document.createElement('span');
-            errorSpan.id = 'outputSizeError';
-            errorSpan.textContent = '有効な出力サイズを入力してください。';
-            errorSpan.style.color = 'red';
-            // Insert error message after the output height input, for example
-            const outputHeightInput = document.getElementById('outputHeight');
-            if (!document.getElementById('outputSizeError') && outputHeightInput.parentNode) {
-                 outputHeightInput.parentNode.insertBefore(errorSpan, outputHeightInput.nextSibling);
-            }
-            // Set canvas to a small default size or its current size to show the cleared state
-            previewCanvas.width = previewCanvas.width || 100; // Keep current or default
-            previewCanvas.height = previewCanvas.height || 100;
-            return;
-        } else {
-            const errorSpan = document.getElementById('outputSizeError');
-            if (errorSpan) {
-                errorSpan.remove();
-            }
-        }
+  async function handleFile(file) {
+    showMessage(elements.uploadError, "");
 
-        previewCanvas.width = outputWidth;
-        previewCanvas.height = outputHeight;
-        ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-
-        const resizeOption = document.querySelector('input[name="resizeOption"]:checked').value;
-
-        if (resizeOption === 'fit') {
-            const bgOption = document.querySelector('input[name="backgroundOption"]:checked').value;
-            if (bgOption === 'white') {
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, outputWidth, outputHeight);
-            } // For 'transparent', do nothing, as canvas is cleared to transparent by default
-
-            const originalAspectRatio = currentImage.naturalWidth / currentImage.naturalHeight;
-            const targetAspectRatio = outputWidth / outputHeight;
-            let renderableWidth, renderableHeight, destX, destY;
-
-            if (originalAspectRatio > targetAspectRatio) { // Image is wider than target area
-                renderableWidth = outputWidth;
-                renderableHeight = outputWidth / originalAspectRatio;
-            } else { // Image is taller or same aspect ratio
-                renderableHeight = outputHeight;
-                renderableWidth = outputHeight * originalAspectRatio;
-            }
-            
-            // Ensure positive dimensions (should be, due to outputWidth/Height > 0 check)
-            renderableWidth = Math.max(1, renderableWidth);
-            renderableHeight = Math.max(1, renderableHeight);
-
-            destX = (outputWidth - renderableWidth) / 2;
-            destY = (outputHeight - renderableHeight) / 2;
-
-            ctx.drawImage(currentImage, destX, destY, renderableWidth, renderableHeight);
-
-        } else if (resizeOption === 'crop') {
-            const srcWidth = currentImage.naturalWidth;
-            const srcHeight = currentImage.naturalHeight;
-            const srcAspectRatio = srcWidth / srcHeight;
-            const destAspectRatio = outputWidth / outputHeight;
-
-            let cropX = 0, cropY = 0, cropWidth = srcWidth, cropHeight = srcHeight;
-
-            if (srcAspectRatio > destAspectRatio) { // Original image is wider, crop sides
-                cropWidth = srcHeight * destAspectRatio;
-                cropX = (srcWidth - cropWidth) / 2;
-            } else if (srcAspectRatio < destAspectRatio) { // Original image is taller, crop top/bottom
-                cropHeight = srcWidth / destAspectRatio;
-                cropY = (srcHeight - cropHeight) / 2;
-            }
-            // If aspect ratios are equal, no cropping needed, use full source image
-
-            // Ensure crop dimensions are not negative or zero (can happen with extreme aspect ratios)
-            if (cropWidth <= 0) cropWidth = 1;
-            if (cropHeight <= 0) cropHeight = 1;
-            if (cropX < 0) cropX = 0;
-            if (cropY < 0) cropY = 0;
-
-
-            ctx.drawImage(currentImage, cropX, cropY, cropWidth, cropHeight, 0, 0, outputWidth, outputHeight);
-        }
-        console.log("Preview updated.");
+    if (!file) return;
+    if (!isAcceptedInputFile(file)) {
+      showMessage(elements.uploadError, "JPG、PNG、WebP、BMP形式の画像を選択してください。");
+      return;
+    }
+    if (file.size > window.ImageUtils.LIMITS.maxFileBytes) {
+      showMessage(elements.uploadError, "40MB以下の画像を選択してください。");
+      return;
     }
 
-    // Event listener for file input
-    imageFileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
+    elements.dropZone.classList.add("is-loading");
+    elements.dropZone.setAttribute("aria-busy", "true");
 
-        if (!file) {
-            currentImage = null;
-            originalDimensionsDisplay.textContent = '--- x ---';
-            outputFilenameInput.value = '';
-            previewCanvas.getContext('2d').clearRect(0, 0, previewCanvas.width, previewCanvas.height); // Clear canvas
-            console.log("No file selected or selection cancelled.");
-            return;
-        }
+    try {
+      const decoded = await decodeImage(file);
+      const width = decoded.image.naturalWidth || decoded.image.width;
+      const height = decoded.image.naturalHeight || decoded.image.height;
+      const validation = validateSource(file, width, height);
 
-        const reader = new FileReader();
+      if (!validation.valid) {
+        decoded.image.close?.();
+        URL.revokeObjectURL(decoded.objectUrl);
+        showMessage(elements.uploadError, validation.message);
+        return;
+      }
 
-        reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-                currentImage = img;
-                originalDimensionsDisplay.textContent = `幅: ${img.naturalWidth}px、高さ: ${img.naturalHeight}px`;
-                
-                // Set output filename without extension
-                const fileNameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-                outputFilenameInput.value = fileNameWithoutExtension;
-                
-                updatePreview(); // Call preview update
-            };
-            img.onerror = () => {
-                currentImage = null;
-                alert('画像の読み込みに失敗しました。');
-                originalDimensionsDisplay.textContent = '--- x ---';
-                outputFilenameInput.value = '';
-            };
-            img.src = reader.result;
-        };
+      resetImageState();
+      state.file = file;
+      state.image = decoded.image;
+      state.sourceUrl = decoded.objectUrl;
+      state.sourceWidth = width;
+      state.sourceHeight = height;
 
-        reader.onerror = () => {
-            currentImage = null;
-            alert('ファイルの読み込みに失敗しました。');
-            originalDimensionsDisplay.textContent = '--- x ---';
-            outputFilenameInput.value = '';
-        };
+      elements.sourceThumbnail.src = decoded.objectUrl;
+      elements.sourceThumbnail.alt = `${file.name}の縮小プレビュー`;
+      elements.sourceName.textContent = file.name;
+      elements.sourceDimensions.textContent = `${width.toLocaleString()} × ${height.toLocaleString()} px`;
+      elements.sourceSize.textContent = formatBytes(file.size);
+      const initialDimensions = fitWithinOutputLimits(width, height);
+      elements.width.value = initialDimensions.width;
+      elements.height.value = initialDimensions.height;
+      elements.aspectLock.checked = true;
+      elements.filename.value = sanitizeFilename(file.name);
+      elements.workspace.hidden = false;
+      document.body.classList.add("has-image");
+      elements.workspace.scrollIntoView({ behavior: "smooth", block: "start" });
 
-        reader.readAsDataURL(file);
-    });
-
-    // Add event listeners to input controls to call updatePreview
-    outputWidthInput.addEventListener('input', updatePreview);
-    outputHeightInput.addEventListener('input', updatePreview);
-    resizeFitRadio.addEventListener('change', updatePreview);
-    resizeCropRadio.addEventListener('change', updatePreview);
-    bgWhiteRadio.addEventListener('change', updatePreview);
-    bgTransparentRadio.addEventListener('change', updatePreview);
-    outputFormatSelect.addEventListener('change', updatePreview);
-    // No need to call updatePreview for outputFilenameInput change as it doesn't affect the visual preview
-
-    // --- Download Functionality ---
-    const downloadButton = document.getElementById('downloadButton');
-
-    function downloadImage() {
-        console.log("downloadImage called");
-        const previewCanvas = document.getElementById('previewCanvas');
-
-        // Check if there's an image and canvas has valid dimensions
-        if (!currentImage || previewCanvas.width <= 0 || previewCanvas.height <= 0) {
-            alert('ダウンロードする画像がありません。まず画像をアップロードして設定を調整してください。');
-            console.log("Download attempt failed: No image or invalid canvas dimensions.");
-            return;
-        }
-
-        const outputFormat = document.getElementById('outputFormat').value;
-        let outputFilename = document.getElementById('outputFilename').value.trim();
-
-        if (!outputFilename) {
-            outputFilename = 'thumbnail';
-            console.log("Output filename empty, defaulted to 'thumbnail'.");
-        }
-
-        let mimeType;
-        let extension;
-
-        switch (outputFormat) {
-            case 'jpeg':
-                mimeType = 'image/jpeg';
-                extension = '.jpg';
-                break;
-            case 'png':
-                mimeType = 'image/png';
-                extension = '.png';
-                break;
-            case 'webp':
-                mimeType = 'image/webp';
-                extension = '.webp';
-                break;
-            default:
-                console.warn(`Unknown output format: ${outputFormat}. Defaulting to PNG.`);
-                mimeType = 'image/png';
-                extension = '.png';
-        }
-
-        console.log(`Preparing download: Filename: ${outputFilename}${extension}, Format: ${outputFormat}, MIME: ${mimeType}`);
-
-        // For JPEG and WebP, quality can be specified. 0.9 is a good default.
-        // For PNG, the quality argument is ignored.
-        const dataURL = previewCanvas.toDataURL(mimeType, 0.9);
-
-        const link = document.createElement('a');
-        link.href = dataURL;
-        link.download = outputFilename + extension;
-
-        document.body.appendChild(link); // Append to body
-        link.click(); // Programmatically click the link to trigger download
-        document.body.removeChild(link); // Remove the link after triggering download
-
-        console.log("Download triggered.");
+      scheduleRender(0);
+    } catch (error) {
+      showMessage(elements.uploadError, error.message || "画像を読み込めませんでした。別の画像をお試しください。");
+    } finally {
+      elements.dropZone.classList.remove("is-loading");
+      elements.dropZone.removeAttribute("aria-busy");
+      elements.fileInput.value = "";
     }
+  }
 
-    if (downloadButton) {
-        downloadButton.addEventListener('click', downloadImage);
-        console.log("Event listener for download button has been set up.");
+  function resetImageState() {
+    state.renderToken += 1;
+    if (state.renderTimer) clearTimeout(state.renderTimer);
+    state.image?.close?.();
+    revokeUrl("sourceUrl");
+    clearOutput();
+    state.file = null;
+    state.image = null;
+    state.sourceWidth = 0;
+    state.sourceHeight = 0;
+  }
+
+  function resetApplication() {
+    resetImageState();
+    elements.workspace.hidden = true;
+    document.body.classList.remove("has-image");
+    elements.sourceThumbnail.removeAttribute("src");
+    elements.sourceThumbnail.alt = "";
+    elements.form.reset();
+    syncDependentControls();
+    elements.qualityValue.textContent = "90";
+    showMessage(elements.uploadError, "");
+    showMessage(elements.dimensionError, "");
+    showMessage(elements.renderError, "");
+    elements.fileInput.focus();
+  }
+
+  function getSelectedValue(name) {
+    return elements.form.querySelector(`input[name="${name}"]:checked`)?.value;
+  }
+
+  function syncDependentControls() {
+    const isCrop = getSelectedValue("resize-mode") === "crop";
+    const isPng = elements.format.value === "png";
+    const wantsTransparency = getSelectedValue("background") === "transparent";
+
+    elements.backgroundFieldset.disabled = isCrop;
+    elements.backgroundFieldset.classList.toggle("is-disabled", isCrop);
+    elements.quality.disabled = isPng;
+    elements.qualityField.classList.toggle("is-disabled", isPng);
+    elements.qualityValue.textContent = isPng ? "—" : elements.quality.value;
+    elements.backgroundNote.hidden = !(elements.format.value === "jpeg" && wantsTransparency && !isCrop);
+    elements.extension.textContent = getExtension(elements.format.value);
+  }
+
+  function syncAspectRatio(changedInput) {
+    if (!elements.aspectLock.checked || state.changingDimensions || !state.sourceWidth || !state.sourceHeight) return;
+
+    const value = Number(changedInput.value);
+    if (!Number.isFinite(value) || value < 1) return;
+
+    state.changingDimensions = true;
+    if (changedInput === elements.width) {
+      elements.height.value = Math.max(1, Math.round(value * state.sourceHeight / state.sourceWidth));
     } else {
-        console.error("Download button not found!");
+      elements.width.value = Math.max(1, Math.round(value * state.sourceWidth / state.sourceHeight));
     }
-    
-    // Initial setup (if any)
-    console.log("Event listeners for controls have been set up.");
+    state.changingDimensions = false;
+  }
 
-    // --- Preset Templates Functionality ---
-    const presetDimensions = {
-        driverLicense: { width: 613, height: 413 },
-        passport: { width: 413, height: 531 },
-        myNumber: { width: 348, height: 431 },
-        rirekisho: { width: 354, height: 472 }
-    };
+  function scheduleRender(delay = 180) {
+    if (!state.image) return;
+    if (state.renderTimer) clearTimeout(state.renderTimer);
+    setRenderState("更新待ち", "idle");
+    clearOutput();
+    state.renderTimer = setTimeout(renderOutput, delay);
+  }
 
-    function applyPreset(presetName) {
-        const dims = presetDimensions[presetName];
-        if (dims) {
-            outputWidthInput.value = dims.width;
-            outputHeightInput.value = dims.height;
-            updatePreview(); // Directly call updatePreview
-            console.log(`Applied preset: ${presetName} (${dims.width}x${dims.height})`);
-        } else {
-            console.error(`Preset ${presetName} not found.`);
-        }
-    }
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        blob => blob ? resolve(blob) : reject(new Error("この形式で画像を作成できませんでした。")),
+        type,
+        quality
+      );
+    });
+  }
 
-    const presetDriverLicenseButton = document.getElementById('presetDriverLicense');
-    const presetPassportButton = document.getElementById('presetPassport');
-    const presetMyNumberButton = document.getElementById('presetMyNumber');
-    const presetRirekishoButton = document.getElementById('presetRirekisho');
+  async function renderOutput() {
+    const token = ++state.renderToken;
+    const width = Number(elements.width.value);
+    const height = Number(elements.height.value);
+    const validation = validateOutputDimensions(width, height);
 
-    if (presetDriverLicenseButton) {
-        presetDriverLicenseButton.addEventListener('click', () => applyPreset('driverLicense'));
-    }
-    if (presetPassportButton) {
-        presetPassportButton.addEventListener('click', () => applyPreset('passport'));
-    }
-    if (presetMyNumberButton) {
-        presetMyNumberButton.addEventListener('click', () => applyPreset('myNumber'));
-    }
-    if (presetRirekishoButton) {
-        presetRirekishoButton.addEventListener('click', () => applyPreset('rirekisho'));
-    }
-    
-    if (presetTemplatesDiv && !presetDriverLicenseButton && !presetPassportButton && !presetMyNumberButton && !presetRirekishoButton ) {
-        console.warn("Preset template buttons not found, but the container exists. Check button IDs.");
-    } else if (presetDriverLicenseButton || presetPassportButton || presetMyNumberButton || presetRirekishoButton) {
-        console.log("Event listeners for preset buttons have been set up.");
+    showMessage(elements.dimensionError, validation.message);
+    showMessage(elements.renderError, "");
+
+    if (!validation.valid) {
+      setRenderState("設定を確認", "error");
+      elements.outputDimensions.textContent = "—";
+      clearOutput();
+      return;
     }
 
+    try {
+      setRenderState("生成中", "working");
+      elements.outputSize.textContent = "計算中";
+      elements.canvas.width = width;
+      elements.canvas.height = height;
 
-});
+      const context = elements.canvas.getContext("2d", { alpha: true });
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.clearRect(0, 0, width, height);
+
+      const mode = getSelectedValue("resize-mode");
+      const background = getSelectedValue("background");
+      const format = elements.format.value;
+      const shouldFillWhite = mode === "fit" && (background === "white" || format === "jpeg");
+
+      if (shouldFillWhite) {
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, width, height);
+      }
+
+      const rectangle = mode === "crop"
+        ? calculateCrop(state.sourceWidth, state.sourceHeight, width, height)
+        : calculateFit(state.sourceWidth, state.sourceHeight, width, height);
+
+      context.drawImage(
+        state.image,
+        rectangle.sourceX,
+        rectangle.sourceY,
+        rectangle.sourceWidth,
+        rectangle.sourceHeight,
+        rectangle.destinationX,
+        rectangle.destinationY,
+        rectangle.destinationWidth,
+        rectangle.destinationHeight
+      );
+
+      const blob = await canvasToBlob(
+        elements.canvas,
+        getMimeType(format),
+        normalizeQuality(elements.quality.value)
+      );
+
+      if (token !== state.renderToken) return;
+
+      clearOutput();
+      state.outputBlob = blob;
+      state.previewUrl = URL.createObjectURL(blob);
+      elements.outputDimensions.textContent = `${width.toLocaleString()} × ${height.toLocaleString()} px`;
+      elements.outputSize.textContent = formatBytes(blob.size);
+      elements.downloadButton.disabled = false;
+      setRenderState("保存できます", "ready");
+    } catch (error) {
+      if (token !== state.renderToken) return;
+      clearOutput();
+      setRenderState("生成失敗", "error");
+      showMessage(elements.renderError, error.message || "画像の生成に失敗しました。設定を変えてお試しください。");
+    }
+  }
+
+  function applyPreset(button) {
+    elements.aspectLock.checked = false;
+    elements.width.value = button.dataset.width;
+    elements.height.value = button.dataset.height;
+    document.querySelectorAll(".preset-button").forEach(item => {
+      item.classList.toggle("is-selected", item === button);
+      item.setAttribute("aria-pressed", String(item === button));
+    });
+    scheduleRender(0);
+  }
+
+  function downloadOutput() {
+    if (!state.outputBlob || !state.previewUrl) return;
+
+    const link = document.createElement("a");
+    const name = sanitizeFilename(elements.filename.value);
+    elements.filename.value = name;
+    link.href = state.previewUrl;
+    link.download = `${name}${getExtension(elements.format.value)}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  elements.fileInput.addEventListener("change", event => {
+    handleFile(event.target.files?.[0]);
+  });
+
+  ["dragenter", "dragover"].forEach(eventName => {
+    elements.dropZone.addEventListener(eventName, event => {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      elements.dropZone.classList.add("is-dragging");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(eventName => {
+    elements.dropZone.addEventListener(eventName, event => {
+      event.preventDefault();
+      elements.dropZone.classList.remove("is-dragging");
+    });
+  });
+
+  elements.dropZone.addEventListener("drop", event => {
+    handleFile(event.dataTransfer?.files?.[0]);
+  });
+
+  [elements.width, elements.height].forEach(input => {
+    input.addEventListener("input", () => {
+      syncAspectRatio(input);
+      document.querySelectorAll(".preset-button").forEach(button => {
+        button.classList.remove("is-selected");
+        button.setAttribute("aria-pressed", "false");
+      });
+      scheduleRender();
+    });
+  });
+
+  elements.form.addEventListener("change", event => {
+    if (event.target === elements.width || event.target === elements.height) return;
+    syncDependentControls();
+    scheduleRender();
+  });
+
+  elements.form.addEventListener("submit", event => {
+    event.preventDefault();
+    scheduleRender(0);
+  });
+
+  elements.quality.addEventListener("input", () => {
+    elements.qualityValue.textContent = elements.quality.value;
+    scheduleRender();
+  });
+
+  document.querySelectorAll(".preset-button").forEach(button => {
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => applyPreset(button));
+  });
+
+  elements.resetButton.addEventListener("click", resetApplication);
+  elements.downloadButton.addEventListener("click", downloadOutput);
+  elements.filename.addEventListener("blur", () => {
+    elements.filename.value = sanitizeFilename(elements.filename.value);
+  });
+  window.addEventListener("beforeunload", resetImageState);
+
+  syncDependentControls();
+})();
