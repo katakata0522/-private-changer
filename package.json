@@ -1,6 +1,6 @@
 {
   "name": "private-image-resizer",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "ブラウザ内だけで画像をリサイズ・切り抜き・形式変換する静的Webツール",
   "scripts": {
