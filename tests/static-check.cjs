@@ -12,14 +12,22 @@ assert.doesNotMatch(html, /\{\/\*/, "JSX形式のコメントをHTMLへ残さな
 assert.doesNotMatch(html, /https?:\/\//, "外部リソースへ接続しない");
 assert.match(html, /lang="ja"/);
 assert.match(html, /<meta name="description"/);
+assert.match(html, /http-equiv="Content-Security-Policy"/);
+assert.match(html, /connect-src 'none'/);
 assert.match(html, /id="upload-error"[^>]+role="alert"/);
 assert.match(html, /id="render-status"[^>]+aria-live="polite"/);
 assert.match(html, /<fieldset>/);
 assert.match(html, /<legend>/);
+assert.doesNotMatch(html, /class="visually-hidden" type="submit"/);
+assert.match(html, /id="preview-title" tabindex="-1"/);
 assert.match(script, /URL\.revokeObjectURL/);
 assert.match(script, /createImageBitmap/);
+assert.match(script, /blob\.type !== type/);
+assert.match(script, /settingsRevision/);
 assert.match(utils, /maxSourcePixels/);
 assert.match(utils, /maxOutputPixels/);
+assert.match(utils, /maxPreviewPixels/);
+assert.match(utils, /parseImageDimensions/);
 assert.match(css, /prefers-reduced-motion/);
 assert.match(css, /prefers-color-scheme: dark/);
 
