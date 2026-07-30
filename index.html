@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="画像を外部へ送信せず、ブラウザ内だけでリサイズ・切り抜き・形式変換できる無料ツールです。">
   <meta name="theme-color" content="#16324f">
@@ -51,18 +52,57 @@
         <strong>画像をここにドロップ</strong>
         <span>または</span>
         <span class="button button-primary">ファイルを選択</span>
-        <small id="upload-help">JPG・PNG・WebP・BMP／40MBまで</small>
+        <small id="upload-help">JPG・PNG・WebP・BMP／40MBまで／画像の貼り付けにも対応</small>
       </label>
       <p id="upload-error" class="message message-error" role="alert" hidden></p>
     </section>
 
-    <section id="workspace" class="workspace" aria-labelledby="settings-title" hidden>
-      <form id="resize-form" class="settings-panel" novalidate>
-        <button class="visually-hidden" type="submit">現在の設定を反映</button>
+    <div id="workspace" class="workspace" hidden>
+      <section class="preview-panel" aria-labelledby="preview-title">
+        <div class="preview-heading">
+          <div>
+            <p class="step-label">PREVIEW</p>
+            <h2 id="preview-title" tabindex="-1">仕上がりを確認</h2>
+          </div>
+          <span id="render-status" class="render-status" role="status" aria-live="polite">準備中</span>
+        </div>
+
+        <div id="canvas-stage" class="canvas-stage">
+          <canvas id="preview-canvas">リサイズ後の画像プレビュー</canvas>
+          <p id="crop-drag-hint" class="crop-drag-hint" hidden>画像をドラッグして切り抜き位置を調整できます</p>
+        </div>
+
+        <dl class="output-summary">
+          <div>
+            <dt>出力サイズ</dt>
+            <dd id="output-dimensions">—</dd>
+          </div>
+          <div>
+            <dt>概算容量</dt>
+            <dd id="output-size">計算中</dd>
+          </div>
+        </dl>
+
+        <p id="upscale-warning" class="message message-warning" role="status" hidden></p>
+        <p id="render-error" class="message message-error" role="alert" hidden></p>
+        <button id="download-button" class="button button-download" type="button" disabled>
+          この設定で画像を生成
+        </button>
+        <p class="download-note">高解像度の画像は、保存ボタンを押したときだけ生成します。</p>
+      </section>
+
+      <div class="mobile-download-bar">
+        <span id="mobile-output-summary">設定を確認中</span>
+        <button id="mobile-download-button" class="button button-download" type="button" disabled>
+          画像を生成
+        </button>
+      </div>
+
+      <section id="resize-form" class="settings-panel" aria-labelledby="settings-title">
         <div class="section-heading">
           <div>
-            <p class="step-label">STEP 2</p>
-            <h2 id="settings-title">仕上がりを決める</h2>
+            <p class="step-label">SETTINGS</p>
+            <h2 id="settings-title">設定を調整</h2>
           </div>
           <button id="reset-button" class="text-button" type="button">別の画像に変更</button>
         </div>
@@ -155,6 +195,19 @@
               </span>
             </label>
           </div>
+          <div id="crop-position-field" class="crop-position-field" hidden>
+            <p class="field-note">切り抜きの中心位置</p>
+            <div class="position-grid">
+              <div class="position-control">
+                <span><label for="crop-x">左右</label> <output id="crop-x-value" for="crop-x">中央</output></span>
+                <input id="crop-x" type="range" min="0" max="100" step="1" value="50">
+              </div>
+              <div class="position-control">
+                <span><label for="crop-y">上下</label> <output id="crop-y-value" for="crop-y">中央</output></span>
+                <input id="crop-y" type="range" min="0" max="100" step="1" value="50">
+              </div>
+            </div>
+          </div>
         </fieldset>
 
         <fieldset id="background-fieldset">
@@ -189,6 +242,15 @@
             </div>
           </div>
           <p class="field-note">JPG・WebPは画質を下げると容量を小さくできます。PNGでは画質設定を使用しません。</p>
+          <label class="target-size-toggle">
+            <input id="target-size-enabled" type="checkbox">
+            <span>ファイル容量の上限を指定する</span>
+          </label>
+          <label id="target-size-control" class="target-size-control" hidden>
+            <span>上限</span>
+            <span><input id="target-size" type="number" min="10" max="20000" step="10" value="500" inputmode="numeric"> KB</span>
+          </label>
+          <p id="target-size-note" class="field-note" hidden>JPG・WebPの画質を自動調整します。指定容量に収まらない場合は保存しません。</p>
         </fieldset>
 
         <div class="filename-field">
@@ -198,39 +260,9 @@
             <span id="output-extension">.jpg</span>
           </div>
         </div>
-      </form>
-
-      <section class="preview-panel" aria-labelledby="preview-title">
-        <div class="preview-heading">
-          <div>
-            <p class="step-label">STEP 3</p>
-            <h2 id="preview-title">確認して保存</h2>
-          </div>
-          <span id="render-status" class="render-status" role="status" aria-live="polite">準備中</span>
-        </div>
-
-        <div id="canvas-stage" class="canvas-stage">
-          <canvas id="preview-canvas">リサイズ後の画像プレビュー</canvas>
-        </div>
-
-        <dl class="output-summary">
-          <div>
-            <dt>出力サイズ</dt>
-            <dd id="output-dimensions">—</dd>
-          </div>
-          <div>
-            <dt>予想容量</dt>
-            <dd id="output-size">計算中</dd>
-          </div>
-        </dl>
-
-        <p id="render-error" class="message message-error" role="alert" hidden></p>
-        <button id="download-button" class="button button-download" type="button" disabled>
-          画像をダウンロード
-        </button>
-        <p class="download-note">ダウンロード後も、元画像は変更されません。</p>
       </section>
-    </section>
+
+    </div>
 
     <section class="help-panel" aria-labelledby="help-title">
       <h2 id="help-title">このツールの扱いについて</h2>
@@ -251,6 +283,7 @@
     <p>画像リサイズツール — ブラウザ内で完結する画像加工</p>
   </footer>
 
+  <noscript><p class="noscript-message">このツールを使うにはJavaScriptを有効にしてください。</p></noscript>
   <script src="image-utils.js"></script>
   <script src="script.js"></script>
 </body>
