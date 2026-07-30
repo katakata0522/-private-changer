@@ -9,13 +9,17 @@
   --action-hover: #075482;
   --success: #147d64;
   --success-soft: #e4f4ef;
+  --success-ink: #145d4d;
   --warning: #956300;
   --warning-soft: #fff4d6;
+  --warning-ink: #6d4900;
   --danger: #b42318;
   --danger-soft: #fff0ee;
+  --danger-ink: #8f1d14;
   --focus: #f2a900;
   --shadow: 0 14px 34px rgba(22, 50, 79, 0.08);
-  font-family: Inter, "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+    "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
   color: var(--ink);
   background: #eef1f3;
   font-synthesis: none;
@@ -305,12 +309,19 @@ h3 {
 .message-error {
   border: 1px solid #efb3ad;
   background: var(--danger-soft);
-  color: #8f1d14;
+  color: var(--danger-ink);
+}
+
+.message-warning {
+  border: 1px solid #d8bd70;
+  background: var(--warning-soft);
+  color: var(--warning-ink);
 }
 
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.85fr);
+  grid-template-areas: "settings preview";
   align-items: start;
   gap: 1.25rem;
   margin-top: 2rem;
@@ -333,6 +344,14 @@ h3 {
 .settings-panel,
 .preview-panel {
   padding: clamp(1rem, 3vw, 1.6rem);
+}
+
+.settings-panel {
+  grid-area: settings;
+}
+
+.preview-panel {
+  grid-area: preview;
 }
 
 .section-heading,
@@ -500,7 +519,7 @@ input:invalid {
 
 .field-error {
   margin: 0.65rem 0 0;
-  color: var(--danger);
+  color: var(--danger-ink);
   font-size: 0.85rem;
   font-weight: 700;
 }
@@ -603,6 +622,47 @@ input:invalid {
   opacity: 0.5;
 }
 
+.crop-position-field {
+  margin-top: 0.9rem;
+  border-radius: 0.45rem;
+  padding: 0.75rem;
+  background: var(--surface-subtle);
+}
+
+.crop-position-field > .field-note {
+  margin-top: 0;
+  font-weight: 700;
+}
+
+.position-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.65rem;
+}
+
+.position-control {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.position-control > span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.position-control output {
+  color: var(--action);
+}
+
+.position-control input {
+  width: 100%;
+  accent-color: var(--action);
+}
+
 .format-row {
   display: grid;
   grid-template-columns: minmax(140px, 0.65fr) minmax(180px, 1fr);
@@ -617,6 +677,52 @@ input:invalid {
 
 #quality-value {
   color: var(--action);
+}
+
+.target-size-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.target-size-toggle input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--action);
+}
+
+.target-size-toggle:has(input:disabled) {
+  opacity: 0.5;
+}
+
+.target-size-control {
+  display: grid;
+  grid-template-columns: auto minmax(0, 190px);
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  font-weight: 700;
+}
+
+.target-size-control[hidden],
+.crop-position-field[hidden],
+.crop-drag-hint[hidden] {
+  display: none;
+}
+
+.target-size-control > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.target-size-control input {
+  min-width: 0;
 }
 
 .filename-field {
@@ -677,20 +783,21 @@ input:invalid {
 
 .render-status[data-tone="ready"] {
   background: var(--success-soft);
-  color: #145d4d;
+  color: var(--success-ink);
 }
 
 .render-status[data-tone="working"] {
   background: var(--warning-soft);
-  color: var(--warning);
+  color: var(--warning-ink);
 }
 
 .render-status[data-tone="error"] {
   background: var(--danger-soft);
-  color: var(--danger);
+  color: var(--danger-ink);
 }
 
 .canvas-stage {
+  position: relative;
   display: grid;
   min-height: 320px;
   max-height: 560px;
@@ -709,11 +816,35 @@ input:invalid {
   background-size: 20px 20px;
 }
 
+.canvas-stage.is-cropping {
+  cursor: grab;
+  touch-action: none;
+}
+
+.canvas-stage.is-dragging-crop {
+  cursor: grabbing;
+}
+
 #preview-canvas {
   display: block;
   max-width: 100%;
   max-height: 520px;
   box-shadow: 0 8px 24px rgba(24, 35, 45, 0.18);
+}
+
+.crop-drag-hint {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  left: 0.65rem;
+  margin: 0;
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  background: rgba(13, 38, 60, 0.86);
+  color: #ffffff;
+  font-size: 0.72rem;
+  text-align: center;
+  pointer-events: none;
 }
 
 .output-summary {
@@ -764,6 +895,24 @@ input:invalid {
   text-align: center;
 }
 
+.mobile-download-bar {
+  display: none;
+}
+
+.is-exporting .settings-panel {
+  opacity: 0.65;
+}
+
+.noscript-message {
+  margin: 1rem;
+  border: 1px solid #efb3ad;
+  border-radius: 0.4rem;
+  padding: 0.8rem;
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+  text-align: center;
+}
+
 .help-panel {
   margin-top: 2rem;
   padding: clamp(1rem, 3vw, 1.6rem);
@@ -802,10 +951,47 @@ footer p {
 @media (max-width: 860px) {
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "preview"
+      "mobile-action"
+      "settings";
   }
 
   .preview-panel {
     position: static;
+  }
+
+  .preview-panel .button-download {
+    display: none;
+  }
+
+  .mobile-download-bar {
+    position: sticky;
+    z-index: 10;
+    bottom: 0.5rem;
+    grid-area: mobile-action;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.55rem;
+    padding: 0.55rem;
+    background: var(--surface);
+    box-shadow: 0 8px 28px rgba(22, 50, 79, 0.2);
+  }
+
+  .mobile-download-bar span {
+    padding-left: 0.35rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .mobile-download-bar .button-download {
+    width: auto;
+    min-width: 9rem;
+    min-height: 2.75rem;
   }
 
   .canvas-stage {
@@ -860,6 +1046,7 @@ footer p {
 
   .preset-grid,
   .choice-grid,
+  .position-grid,
   .format-row,
   .help-grid {
     grid-template-columns: 1fr;
@@ -903,7 +1090,12 @@ footer p {
     --action: #65b7e6;
     --action-hover: #84c8ec;
     --success-soft: #153e35;
+    --success-ink: #9fe3cf;
+    --warning-soft: #473710;
+    --warning-ink: #ffd784;
+    --danger: #ff9b91;
     --danger-soft: #421d1b;
+    --danger-ink: #ffc0ba;
     background: #101920;
   }
 
