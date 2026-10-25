@@ -706,6 +706,12 @@
   }
 
   elements.fileInput.addEventListener("change", event => {
+    // 貼り付け・ドロップと同じく、生成中は画像を差し替えない。
+    // 同じファイルを後で選び直せるよう、選択はリセットしておく。
+    if (state.isExporting) {
+      event.target.value = "";
+      return;
+    }
     handleFile(event.target.files?.[0]);
   });
 
