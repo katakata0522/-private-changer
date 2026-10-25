@@ -235,6 +235,8 @@
     return null;
   }
 
+  const DOWNLOAD_URL_REVOKE_DELAY_MS = 1500;
+
   async function decodeImage(file) {
     if ("createImageBitmap" in window) {
       try {
@@ -657,7 +659,8 @@
       document.body.appendChild(link);
       link.click();
       link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      // 直後に破棄すると一部ブラウザで保存が始まらないため、少し待ってから破棄する。
+      setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_DELAY_MS);
 
       elements.outputSize.textContent = `${formatBytes(blob.size)}（実測）`;
       setRenderState("保存しました", "ready");
@@ -722,6 +725,8 @@
   });
 
   elements.dropZone.addEventListener("drop", event => {
+    // 貼り付けと同じく、生成中は画像を差し替えない（生成中の画像が閉じられるのを防ぐ）。
+    if (state.isExporting) return;
     handleFile(event.dataTransfer?.files?.[0]);
   });
 
