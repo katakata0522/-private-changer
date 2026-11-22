@@ -9,6 +9,9 @@ const mimeTypes = {
   ".js": "text/javascript; charset=utf-8"
 };
 
+const studioPreview = process.argv.includes('--studio');
+const studioFiles = new Set(["index.html", "image-utils.js", "script.js", "style.css"]);
+
 http.createServer((request, response) => {
   const pathname = new URL(request.url, "http://127.0.0.1").pathname;
   const requestedPath = pathname === "/" ? "index.html" : pathname.slice(1);
@@ -19,6 +22,10 @@ http.createServer((request, response) => {
     return;
   }
 
+  if (studioPreview && !studioFiles.has(requestedPath)) {
+    response.writeHead(404).end();
+    return;
+  }
   fs.readFile(filePath, (error, data) => {
     if (error) {
       response.writeHead(404).end("Not found");
@@ -30,4 +37,4 @@ http.createServer((request, response) => {
     });
     response.end(data);
   });
-}).listen(4173, "127.0.0.1");
+}).listen(studioPreview ? Number(process.env.PORT || 3000) : 4173, studioPreview ? "0.0.0.0" : "127.0.0.1");

@@ -4,6 +4,8 @@
   "private": true,
   "description": "ブラウザ内だけで画像をリサイズ・切り抜き・形式変換する静的Webツール",
   "scripts": {
+    "dev": "node tests/server.cjs --studio",
+    "start": "node tests/server.cjs --studio",
     "test": "node --test tests/image-utils.test.cjs && node tests/static-check.cjs",
     "test:e2e": "playwright test",
     "validate:html": "html-validate index.html",
